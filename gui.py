@@ -5,10 +5,15 @@
 @FileName: gui.py
 @desc: 字幕提取器图形化界面
 """
+import warnings
+warnings.filterwarnings("ignore", category=Warning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dependencies'))
 import configparser
 import PySimpleGUI as sg
 import cv2
-import os
 from threading import Thread
 
 
@@ -56,6 +61,8 @@ class SubtitleExtractorGUI:
         self.xmax = None
         self.ymin = None
         self.ymax = None
+        # 字幕提取器
+        self.se = None
 
     def run(self):
         # 创建布局
@@ -76,6 +83,9 @@ class SubtitleExtractorGUI:
             # 如果关闭软件，退出
             if event == sg.WIN_CLOSED:
                 break
+            # 更新进度条
+            if self.se is not None:
+                self.window['-PROG-'].update(self.se.progress)
 
     def _create_layout(self):
         """
@@ -124,7 +134,8 @@ class SubtitleExtractorGUI:
             # 运行按钮 + 进度条
             [sg.Button(button_text=self.interface_config['SubtitleExtractorGUI']['Run'], key='-RUN-', size=(20, 1)),
              sg.Button(button_text=self.interface_config['SubtitleExtractorGUI']['Setting'], key='-LANGUAGE-MODE-',
-                       size=(20, 1))
+                       size=(20, 1)),
+             sg.ProgressBar(100, orientation='h', size=(44, 20), key='-PROG-')
              ],
         ]
 
@@ -206,8 +217,8 @@ class SubtitleExtractorGUI:
                 print(f"{self.interface_config['SubtitleExtractorGUI']['SubtitleArea']}：({self.ymin},{self.ymax},{self.xmin},{self.xmax})")
                 subtitle_area = (self.ymin, self.ymax, self.xmin, self.xmax)
                 from backend.main import SubtitleExtractor
-                se = SubtitleExtractor(self.video_path, subtitle_area)
-                Thread(target=se.run, daemon=True).start()
+                self.se = SubtitleExtractor(self.video_path, subtitle_area)
+                Thread(target=self.se.run, daemon=True).start()
 
     def _slide_event_handler(self, event, values):
         """
